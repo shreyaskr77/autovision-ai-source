@@ -1,0 +1,161 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: AutoVision AI vehicle recognition API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: analysis
+    description: Vehicle image analysis
+  - name: models
+    description: AI model readiness
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /v1/analyze:
+    post:
+      operationId: analyzeImage
+      tags: [analysis]
+      summary: Analyze vehicles in an uploaded image
+      description: Accepts an image upload and returns detected vehicles, colour estimation, and classifier readiness.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResponse"
+        "400":
+          description: Invalid image upload
+        "413":
+          description: Image is too large
+        "500":
+          description: Analysis service unavailable
+  /v1/models:
+    get:
+      operationId: getModelStatus
+      tags: [models]
+      summary: Get AI model readiness
+      responses:
+        "200":
+          description: Model readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelStatus"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    BoundingBox:
+      type: object
+      properties:
+        x:
+          type: number
+          description: Normalized left coordinate from 0 to 1
+        y:
+          type: number
+          description: Normalized top coordinate from 0 to 1
+        width:
+          type: number
+        height:
+          type: number
+      required: [x, y, width, height]
+    VehicleAnalysis:
+      type: object
+      properties:
+        vehicle_id:
+          type: string
+        bounding_box:
+          $ref: "#/components/schemas/BoundingBox"
+        detection_confidence:
+          type: number
+        make:
+          type: string
+        model:
+          type: string
+        classification_confidence:
+          type: number
+        colour:
+          type: string
+        colour_hex:
+          type: string
+        status:
+          type: string
+          enum: [identified, unable_to_identify, detector_unavailable]
+      required:
+        - vehicle_id
+        - bounding_box
+        - detection_confidence
+        - make
+        - model
+        - classification_confidence
+        - colour
+        - colour_hex
+        - status
+    AnalysisResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        vehicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/VehicleAnalysis"
+        annotated_image:
+          type: string
+          nullable: true
+          description: Data URL for the annotated image when available
+        processing_time_ms:
+          type: integer
+        error:
+          type: string
+          nullable: true
+      required: [success, vehicles, processing_time_ms]
+    ModelStatus:
+      type: object
+      properties:
+        detector:
+          type: string
+        classifier:
+          type: string
+        colour_estimator:
+          type: string
+        ready:
+          type: boolean
+        message:
+          type: string
+      required: [detector, classifier, colour_estimator, ready, message]
+
